@@ -20,7 +20,7 @@ class Block_If_Possible_Strategy:
     '''If the player is able to block the board then return that play, otherwise use
     the backup strategy'''
 
-    def __init__(self, backup_strategy = None):
+    def __init__(self, backup_strategy=None):
         if backup_strategy:
             self.backup_strategy = backup_strategy
         else:
@@ -29,6 +29,15 @@ class Block_If_Possible_Strategy:
     def choose_play(self, player, board, available_plays):
         chosen_play = board.will_block(available_plays)
         if not chosen_play:
-            chosen_play = self.backup_strategy.choose_play(player, board, available_plays)
-        return chosen_play    
-    
+            chosen_play = self.backup_strategy.choose_play(
+                player, board, available_plays)
+        return chosen_play
+
+class Bota_Gorda:
+     def choose_play(self, player, board, available_plays):
+        sorted_plays = sorted(available_plays, key=pip_total, reverse=True)
+        chosen_play = sorted_plays[0]
+        return chosen_play
+
+def pip_total(play):
+    return sum(play[0])
