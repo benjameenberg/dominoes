@@ -11,25 +11,26 @@ class Player:
     def assign_strategy(self, strategy):
         self.strategy = strategy
 
-    def assign(self, dominoes):
+    def assign_dominoes(self, dominoes):
         self.dominoes = dominoes
 
     def __repr__(self):
-        return (str(self.name)+" "+str(self.dominoes))
+        return "Player {}".format(self.name)
 
     def play(self, board):
+        '''Play using the strategy, returning a message describing what was played'''
         # find the valid dominoes by calling available_plays
         # take a domino from self.dominoes and put it on the board
         valid_domino_plays = board.available_plays(self.dominoes)
         if not valid_domino_plays:
-            print(str(self) + " can't play")
-            return
-        print(board)
+            return str(self) + " can't play"
+
         play = self.strategy.choose_play(self, board, valid_domino_plays)
         print(str(self) + " is about to play " + str(play[0]))
         board.putdown(*play)
         self.dominoes.remove(play[0])
-        print(str(self) + " played " + str(play[0]))
+        message = str(self) + " played " + str(play[0])
+        return message
 
 
 class Bad_Domino(Exception):
@@ -117,73 +118,103 @@ class Game:
         self.team_2 = [self.players[1], self.players[3]]
         print("Team 1 is " + str([p.name for p in self.team_1]))
         print("Team 2 is " + str([p.name for p in self.team_2]))
+        self.end_score = int(input("How many points do you want to play to? "))
+        self.reset()
+
+    def reset(self):
+        # Some messages about what has happened
+        self.round_msg = ''
+        self.play_msg = ''
         self.team_1_score = 0
         self.team_2_score = 0
-        self.end_score = int(input("How many points do you want to play to? "))
+        self.board = None
+        self.game_generator = None
 
     def pip_total(self, player_list):
         '''pip_total calculates the total of the dominoes in the given players'''
         total = sum(sum(sum([p.dominoes for p in player_list], []), ()))
         return total
 
-    def score_round(self, last_player):
+    def score_round(self, last_player, is_blocked):
         # if someone goes out their team wins
         # else they team with the lowest pip total in their hands wins
         '''score round determines the winning team'''
-        if last_player.dominoes:
-            # game must be blocked, since last player had dominoes
-            team_1_total = self.pip_total(self.team_1)
-            team_2_total = self.pip_total(self.team_2)
-            if team_1_total < team_2_total:
-                # team 1 won
-                self.team_1_score += team_1_total + team_2_total
-            elif team_2_total < team_1_total:
-                # team 2 won
-                self.team_2_score += team_1_total + team_2_total
-            else:
-                # it is a tie
-                pass
+
+        # game must be blocked, since last player didn't win
+        last_player_won = not is_blocked
+
+        team_1_total = self.pip_total(self.team_1)
+        team_2_total = self.pip_total(self.team_2)
+        points = team_1_total + team_2_total
+        if (last_player_won and last_player in self.team_1) or (
+                is_blocked and team_1_total < team_2_total):
+            # team 1 won
+            self.round_msg = "Team 1 won: {} points".format(points)
+            self.team_1_score += points
+        elif (last_player_won and last_player in self.team_2) or (
+                is_blocked and team_2_total < team_1_total):
+            # team 2 won
+            self.round_msg = "Team 2 won: {} points".format(points)
+            self.team_2_score += points
         else:
-            # last player went out and won
-            all_total = self.pip_total(self.players)
-            if last_player in self.team_1:
-                self.team_1_score += all_total
-            else:
-                self.team_2_score += all_total
+            # it is a tie
+            self.round_msg = "Blocked game, Tie! {} == {}".format(
+                team_1_total, team_2_total)
+
+        if self.team_1_score >= self.end_score:
+            # team 1 won the game
+            self.game_msg = "Team 1 won the game {} to {}".format(
+                self.team_1_score, self.team_2_score)
+            self.game_over = True
+        elif self.team_2_score >= self.end_score:
+            # team 2 won the game
+            self.game_msg = "Team 2 won the game {} to {}".format(
+                self.team_2_score, self.team_1_score)
+            self.game_over = True
+
         print("Team 1 has a score of {} and Team 2 has a score of {}".format(
             self.team_1_score, self.team_2_score))
 
-    def play_round(self):
+    def new_round(self):
+        self.round_over = False 
+        self.round_msg = 'New round'
         self.board = Board()
         x = get_dominoes()
-        self.players[0].assign(x[0:7])
-        self.players[1].assign(x[7:14])
-        self.players[2].assign(x[14:21])
-        self.players[3].assign(x[21:28])
-        round_over = False
-        while not round_over:
-            for p in self.players:
-                p.play(self.board)
-                if p.dominoes == [] or self.board.is_blocked():
-                    print("Last player {} ({} dominoes) : Game is blocked: {}".format(
-                        p.name, len(p.dominoes), self.board.is_blocked()))
-                    round_over = True
-                    self.score_round(p)
+        self.players[0].assign_dominoes(x[0:7])
+        self.players[1].assign_dominoes(x[7:14])
+        self.players[2].assign_dominoes(x[14:21])
+        self.players[3].assign_dominoes(x[21:28])
+
+    def make_game_generator(self):
+        self.play_msg = ''
+        self.game_msg = ''
+        self.game_over = False
+        while not self.game_over:
+            self.new_round()
+            while not self.round_over:
+                for p in self.players:
+                    self.round_msg = ''
+                    # Game stores message about what just was played
+                    self.play_msg = p.play(self.board)
+                    is_blocked = self.board.is_blocked()
+                    if p.dominoes == [] or is_blocked:
+                        print("Last player {} ({} dominoes) : Game is blocked: {}".format(
+                            p.name, len(p.dominoes), self.board.is_blocked()))
+                        self.round_over = True
+                        # Set the round message, and self.game_over if it is...
+                        self.score_round(p, is_blocked)
+                    # This pauses until someone calls next()
+                    yield
+                    if self.round_over:
+                        break
+                if self.game_over:
                     break
 
-    def next_round(self):
-        # if neither team has reached the end score then play another round
-        # else the team that reached the score wins
-        another_round = True
-        if self.team_1_score >= self.end_score:
-            # team 1 won the game
-            print("Team 1 won the game with {} points".format(self.team_1_score))
-            another_round = False
-        elif self.team_2_score >= self.end_score:
-            # team 2 won the game
-            print("Team 2 won the game with {} points".format(self.team_2_score))
-            another_round = False
-        return another_round
+    def next(self):
+        if not self.game_generator:
+            self.game_generator = self.make_game_generator()
+        next(self.game_generator)
+
 
 
 def get_dominoes():

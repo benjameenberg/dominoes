@@ -126,8 +126,7 @@ class DominoSVG(object):
         self.transform_meth = transform_fn.__get__(self, DominoSVG)
         self.init_svg(fg, bg, xmlns=xmlns)
         logging.debug('make (%s,%s)', topnum, bottomnum)
-        logging.info("%s", dir(self))
-
+      
     def init_svg(self, fg, bg, xmlns=False):
         m2d = self.transform_meth()
         # Get the transformation matrix in effect, use to calculate svg bounds
@@ -171,9 +170,11 @@ def mkhtml_str(dominoes, title=None):
 
 def mkhtml(domino_svgs, title=None):
     html = ET.Element('html', lang='en')
+    head = ET.SubElement(html, 'head')
     if title:
-        title_elt = ET.SubElement(html, 'title')
+        title_elt = ET.SubElement(head, 'title')
         title_elt.text = title
+    ET.SubElement(head, 'meta', attrib = {'http-equiv':'refresh', 'content':'5'})
     body = ET.SubElement(html, 'body')
     if title:
         h2 = ET.SubElement(body, 'h2')

@@ -68,18 +68,12 @@ def main():
 
     try:
         headers = {'Content-Type': 'text/html'}
-        return (mkhtml_str(game.board.board_dominoes), headers)
+        dominoes = game.board.board_dominoes if game.board else []
+        return (mkhtml_str(dominoes), headers)
     except Exception as e:
         logging.exception('/ root path %s', e)
         tb = traceback.format_exc()
         return (tb, 500, {})
-
-
-@app.route('/next', methods=['GET'])
-def advance_board():
-    game.next()
-    print(game.play_msg)
-    print(game.round_msg)
 
 
 @app.route('/game/<player_name>', methods=['GET'])
@@ -99,6 +93,17 @@ def player_board(player_name):
     data = mkhtml_str(player_dominoes, title=player_name)
     return (data, headers)
 
+
+@app.route('/next', methods=['GET'])
+def advance_turn():
+    logging.info('advance_turn')
+    game.next()
+    print(game.play_msg)
+    print(game.round_msg)
+    headers = {'Content-Type': 'text/html'}
+
+    data = '<html><body><p>{}<p>{}</body></html>'.format(game.play_msg, game.round_msg)
+    return (data, headers)
 
 @app.errorhandler(404)
 def code_404(error):
@@ -130,4 +135,4 @@ def code_err(error, msg, code):
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0')
