@@ -4,12 +4,13 @@ import os
 import random
 import sys
 import traceback
+import xml.etree.ElementTree as ET
 
 #from google.appengine.api import app_identity
 #from google.appengine.ext import ndb
 import flask
-from flask import Flask, render_template, request
-from make_dominoes import mkhtml_str
+from flask import Flask, render_template, request, send_from_directory, Markup
+from make_dominoes import DominoSVG, mkhtml_str
 
 from dominoes import Player, Board, Game
 from strategies import Player_Input_Strategy, Block_If_Possible_Strategy, Bota_Gorda
@@ -71,7 +72,7 @@ def main():
         dominoes = game.board.board_dominoes if game.board else []
         return (mkhtml_str(dominoes), headers)
     except Exception as e:
-        logging.exception('/ root path %s', e)
+        logging.exception('/ root path {}'.format(e))
         tb = traceback.format_exc()
         return (tb, 500, {})
 
@@ -88,9 +89,18 @@ def player_board(player_name):
     else:
         return code_404('No player {}'.format(player_name))
 
+    player_domino_svg = ' '.join(
+        [ET.tostring(DominoSVG(*d).svg).decode('utf-8') 
+          for d in player_dominoes])
+
+    board_svg = ' '.join(
+        [ET.tostring(DominoSVG(*d).svg).decode('utf-8') 
+          for d in game.board.board_dominoes])
+
     headers = {'Content-Type': 'text/html'}
 
-    data = mkhtml_str(player_dominoes, title=player_name)
+    data = render_template('player.html', player=player_name,
+                           board_svg=Markup(board_svg), player_domino_svg=Markup(player_domino_svg))
     return (data, headers)
 
 
@@ -102,8 +112,15 @@ def advance_turn():
     print(game.round_msg)
     headers = {'Content-Type': 'text/html'}
 
-    data = '<html><body><p>{}<p>{}</body></html>'.format(game.play_msg, game.round_msg)
+    data = '<html><body><p>{}<p>{}</body></html>'.format(
+        game.play_msg, game.round_msg)
     return (data, headers)
+
+
+@app.route('/myfile')
+def send_js():
+    return send_from_directory('templates', 'player.html')
+
 
 @app.errorhandler(404)
 def code_404(error):
