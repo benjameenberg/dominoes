@@ -8,6 +8,19 @@
     {{board_svg}}
     <h2>{{player}}'s dominoes</h2>
     {{player_domino_svg}}
-    <p />
+    <br>
+    <hr>
+<form action = "/move" >
+    {% for p in available_plays %}
+    <input type="radio" name="selected" value="{{ loop.index0 }}" /> 
+       {% if p.play_at_end %}At End{%else%}At begin{%endif%}
+       {{p.svg_data|safe}}   
+    {% endfor %}
+    <input type="submit">
+</form>
+    <br>
+    <hr>
+    {{game_message}}
+    <p>
   </body>
 </html>

@@ -17,7 +17,7 @@ from strategies import Player_Input_Strategy, Block_If_Possible_Strategy, Bota_G
 
 # from google.appengine.ext import users         NOT FOUND< WHAT IS THIS FOR?
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 logging.info('Loaded %s', __name__)
 
 # Add any libraries installed in the "lib" folder.
@@ -41,17 +41,24 @@ logging.info('Loaded %s', __name__)
 app = Flask('dominoes-ui')  # not __name__ sojoinery.sojoinery
 # flask_cors.CORS(app) To allow cross origin requests
 
-p1 = Player("Ben")
-p2 = Player("Kitty")
-p3 = Player("Lucio")
-p4 = Player("Harry")
 
-p1.assign_strategy(Block_If_Possible_Strategy())
-p3.assign_strategy(Block_If_Possible_Strategy())
-p4.assign_strategy(Bota_Gorda())
+def reset():
+    p1 = Player("Ben")
+    p2 = Player("Kitty")
+    p3 = Player("Lucio")
+    p4 = Player("Harry")
 
-players = [p1, p2, p3, p4]
-game = Game([p1, p2, p3, p4])
+    p1.assign_strategy(Block_If_Possible_Strategy())
+    p3.assign_strategy(Block_If_Possible_Strategy())
+    p4.assign_strategy(Bota_Gorda())
+
+    players = [p1, p2, p3, p4]
+    game = Game([p1, p2, p3, p4])
+
+    return players, game
+
+
+players, game = reset()
 
 
 @app.after_request
@@ -77,6 +84,17 @@ def main():
         return (tb, 500, {})
 
 
+@app.route('/reset', methods=['GET'])
+def do_reset():
+    global game, players
+
+    logging.info('/reset')
+    players, game = reset()
+
+    headers = {'Content-Type': 'text/html'}
+    return ("Reset game", headers)
+
+
 @app.route('/game/<player_name>', methods=['GET'])
 def player_board(player_name):
     logging.info('player_board(%s)', player_name)
@@ -88,20 +106,31 @@ def player_board(player_name):
             break
     else:
         return code_404('No player {}'.format(player_name))
-
+    available_plays = [PlayUI(p)
+                       for p in game.board.available_plays(player_dominoes)]
+    # we need to figure out whos turn it is, if it is not my turn no sense in making available_plays
     player_domino_svg = ' '.join(
-        [ET.tostring(DominoSVG(*d).svg).decode('utf-8') 
-          for d in player_dominoes])
+        [ET.tostring(DominoSVG(*d).svg).decode('utf-8')
+         for d in player_dominoes])
 
     board_svg = ' '.join(
-        [ET.tostring(DominoSVG(*d).svg).decode('utf-8') 
-          for d in game.board.board_dominoes])
+        [ET.tostring(DominoSVG(*d).svg).decode('utf-8')
+         for d in game.board.board_dominoes])
 
     headers = {'Content-Type': 'text/html'}
 
     data = render_template('player.html', player=player_name,
-                           board_svg=Markup(board_svg), player_domino_svg=Markup(player_domino_svg))
+                           board_svg=Markup(board_svg), player_domino_svg=Markup(player_domino_svg),
+                           available_plays=available_plays, game_message="Hello")
     return (data, headers)
+
+
+class PlayUI:
+    def __init__(self, play):
+        self.domino = play.domino
+        self.play_at_end = play.play_at_end
+        self.svg_data = ET.tostring(
+            DominoSVG(*self.domino).svg).decode('utf-8')
 
 
 @app.route('/next', methods=['GET'])

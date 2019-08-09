@@ -26,29 +26,33 @@ class Player:
             return str(self) + " can't play"
 
         play = self.strategy.choose_play(self, board, valid_domino_plays)
-        print(str(self) + " is about to play " + str(play[0]))
-        board.putdown(*play)
-        self.dominoes.remove(play[0])
-        message = str(self) + " played " + str(play[0])
+        print(str(self) + " is about to play " + str(play.domino))
+        board.putdown(play.domino, play.play_at_end)
+        self.dominoes.remove(play.domino)
+        message = str(self) + " played " + str(play.domino)
         return message
 
 
 class Bad_Domino(Exception):
     pass
 
+class Play:
+    def __init__(self, domino, play_at_end):
+        self.domino = domino
+        self.play_at_end = play_at_end
 
 class Board:
     def __init__(self):
         self.board_dominoes = []
 
-    def putdown(self, domino, put_at_end):
+    def putdown(self, domino, play_at_end):
         '''put down one dominop onto the board
         if put at end is true it will put it at the
         end of the board'''
         domino = list(domino)
         if self.board_dominoes == []:
             self.board_dominoes.append(domino)
-        elif put_at_end:
+        elif play_at_end:
             if self.board_dominoes[-1][-1] not in domino:
                 raise Bad_Domino("Stupid")
             if domino[-1] == self.board_dominoes[-1][-1]:
@@ -65,17 +69,17 @@ class Board:
         if self.board_dominoes:
             beginning = self.board_dominoes[0][0]
             end = self.board_dominoes[-1][-1]
-            beginning_plays = [(d, False)
+            beginning_plays = [Play(d, False)
                                for d in player_dominoes if beginning in d]
             if beginning != end:
-                end_plays = [(d, True) for d in player_dominoes if end in d]
+                end_plays = [Play(d, True) for d in player_dominoes if end in d]
             # don't have to calculate end plays when both ends are the same
             else:
                 end_plays = []
             x = beginning_plays + end_plays
         else:
             pos = True   # Play at end, doesn't matter since empty board
-            x = [(d, pos) for d in player_dominoes]
+            x = [Play(d, pos) for d in player_dominoes]
         return x
 
     def is_blocked(self):
@@ -99,7 +103,7 @@ class Board:
         # if none are found return None
         saved_board = list(self.board_dominoes)
         for p in available_plays:
-            self.putdown(*p)
+            self.putdown(p.domino, p.play_at_end)
             if self.is_blocked():
                 self.board_dominoes = list(saved_board)
                 return p
@@ -111,14 +115,14 @@ class Board:
 
 
 class Game:
-    def __init__(self, players):
+    def __init__(self, players, end_score=100):
         self.players = players
         assert len(self.players) == 4
         self.team_1 = [self.players[0], self.players[2]]
         self.team_2 = [self.players[1], self.players[3]]
         print("Team 1 is " + str([p.name for p in self.team_1]))
         print("Team 2 is " + str([p.name for p in self.team_2]))
-        self.end_score = int(input("How many points do you want to play to? "))
+        self.end_score = end_score
         self.reset()
 
     def reset(self):
@@ -127,7 +131,7 @@ class Game:
         self.play_msg = ''
         self.team_1_score = 0
         self.team_2_score = 0
-        self.board = None
+        self.board = Board()
         self.game_generator = None
 
     def pip_total(self, player_list):

@@ -40,4 +40,4 @@ class Bota_Gorda:
         return chosen_play
 
 def pip_total(play):
-    return sum(play[0])
+    return sum(play.domino)
