@@ -17,7 +17,7 @@ class Player:
     def __repr__(self):
         return "Player {}".format(self.name)
 
-    def play(self, board):
+    def play(self, board, selected=None):
         '''Play using the strategy, returning a message describing what was played'''
         # find the valid dominoes by calling available_plays
         # take a domino from self.dominoes and put it on the board
@@ -25,12 +25,16 @@ class Player:
         if not valid_domino_plays:
             return str(self) + " can't play"
 
-        play = self.strategy.choose_play(self, board, valid_domino_plays)
+        if selected is None:
+            play = self.strategy.choose_play(self, board, valid_domino_plays)
+        else:
+            play=valid_domino_plays[selected]
         print(str(self) + " is about to play " + str(play.domino))
         board.putdown(play.domino, play.play_at_end)
         self.dominoes.remove(play.domino)
         message = str(self) + " played " + str(play.domino)
         return message
+
 
 
 class Bad_Domino(Exception):

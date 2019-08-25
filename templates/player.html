@@ -10,7 +10,7 @@
     {{player_domino_svg}}
     <br>
     <hr>
-<form action = "/move" >
+<form action = "/move/{{player}}" method = "POST" >
     {% for p in available_plays %}
     <input type="radio" name="selected" value="{{ loop.index0 }}" /> 
        {% if p.play_at_end %}At End{%else%}At begin{%endif%}

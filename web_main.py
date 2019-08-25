@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 #from google.appengine.api import app_identity
 #from google.appengine.ext import ndb
 import flask
-from flask import Flask, render_template, request, send_from_directory, Markup
+from flask import Flask, render_template, request, send_from_directory, Markup, redirect
 from make_dominoes import DominoSVG, mkhtml_str
 
 from dominoes import Player, Board, Game
@@ -146,10 +146,17 @@ def advance_turn():
     return (data, headers)
 
 
-@app.route('/myfile')
-def send_js():
-    return send_from_directory('templates', 'player.html')
-
+@app.route('/move/<player_name>', methods=['POST'])
+def make_move(player_name):
+    selected = request.form.get('selected')
+    for p in players:
+        if p.name == player_name:
+            current_player=p
+            break
+    else:
+        return code_404('No player {}'.format(player_name))
+    current_player.play(game.board, selected=int(selected))
+    return redirect("/game/" + player_name, code=302)
 
 @app.errorhandler(404)
 def code_404(error):
